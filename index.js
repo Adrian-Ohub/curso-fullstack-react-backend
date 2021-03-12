@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const { request } = require("express");
 
 const app = express();
 
@@ -28,6 +29,12 @@ let persons = [
     id: 4,
   },
 ];
+
+app.get("/", (request, response) => {
+  response.send(
+    "<h1> wellcome API Phonebook</h1><br /><h2>Url: api/persons</h2>"
+  );
+});
 
 app.get("/api/persons", (request, response) => {
   response.json(persons);
