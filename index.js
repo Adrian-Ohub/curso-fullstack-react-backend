@@ -1,85 +1,66 @@
+require("dotenv").config();
+require("./mongodb");
 const express = require("express");
 const cors = require("cors");
-const { request } = require("express");
+const Person = require("./models/Person");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-let persons = [
-  {
-    name: "Arto Hellas",
-    number: "040-123456",
-    id: 1,
-  },
-  {
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-    id: 2,
-  },
-  {
-    name: "Dan Abramov",
-    number: "12-43-234345",
-    id: 3,
-  },
-  {
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-    id: 4,
-  },
-];
-
 app.get("/", (request, response) => {
   response.send(
     "<h1> wellcome API Phonebook</h1><br /><h2>Url: api/persons</h2>"
   );
 });
-
 app.get("/api/persons", (request, response) => {
-  response.json(persons);
-});
-
-app.get("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  const person = persons.find((person) => person.id === id);
-
-  if (person) {
+  Person.find({}).then((person) => {
     response.json(person);
-  } else {
-    response.status(404).end();
-  }
+  });
+});
+app.get("/api/persons/:id", (request, response) => {
+  const id = request.params.id;
+  Person.findById(id).then((person) => {
+    if (person) {
+      response.json(person);
+    } else {
+      response.status(404).end();
+    }
+  });
 });
 //Realiza la accion directamente
 app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter((person) => person.id !== id);
-
-  response.status(204).end();
+  const id = request.params.id;
+  Person.findByIdAndDelete(id).then(() => {
+    response.status(204).end();
+  });
 });
-const generateId = () => Math.floor(Math.random() * (1001 - 0)) + 0;
-
 app.post("/api/persons", (request, response) => {
   const body = request.body;
-  if (!body.name || !body.number) {
+  if (body === undefined) {
     return response
       .status(400)
       .json({ error: "The name or number is missing" });
-  } else if (persons.find((person) => person.name === body.name)) {
-    return response
-      .status(400)
-      .json({ error: "The name already exist in the phonebook" });
-  } else {
-    const person = {
-      name: body.name,
-      number: body.number,
-      id: generateId(),
-    };
-    persons = persons.concat(person);
-    response.json(person);
   }
+  console.log(body.name, typeof body.name);
+  Person.findOne({ name: body.name }).then((person) => {
+    console.log(person);
+    if (person !== null) {
+      return response
+        .status(400)
+        .json({ error: "The name already exist in the phonebook" });
+    } else {
+      const person = new Person({
+        name: body.name,
+        number: body.number,
+      });
+      person.save().then((savePerson) => {
+        response.json(savePerson);
+      });
+    }
+  });
 });
-
 app.get("/info", (request, response) => {
   let info =
     "<p>Phonebook has info for " +
@@ -90,7 +71,7 @@ app.get("/info", (request, response) => {
   response.send(info);
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
